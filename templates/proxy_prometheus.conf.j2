@@ -1,0 +1,44 @@
+{% set port = nodeexporter.port %}
+{% set name = nodeexporter.filename %}
+{% set jh = jump_host %}
+
+Listen {{ port }}
+
+<VirtualHost *:{{ port }}>
+    ErrorLog ${APACHE_LOG_DIR}/api-proxy-nodeexporters-error.log
+    LogFormat "%h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-agent}i\" %{ms}T" combined_and_time
+    CustomLog {{ apache_log_dir }}/api-proxy-{{ name }}-access.log combined_and_time
+
+    LogFormat "{{ name }}: %h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-agent}i\" %{ms}T" apiname_and_time
+    CustomLog {{ apache_log_dir }}/api-proxy-grok-exporter-access.log apiname_and_time
+
+    <IfModule log_forensic_module>
+      ForensicLog {{ apache_log_dir }}/prometheus-{{ name }}-forensic.log
+    </IfModule>
+
+    Options -ExecCGI -FollowSymLinks -Includes -Indexes
+    ProxyRequests Off
+    ProxyVia Off
+    RequestHeader unset X-Forwarded-Host
+    RequestHeader unset X-Forwarded-For
+    RequestHeader unset X-Forwarded-Server
+    RequestHeader unset X-Forwarded-Port
+    RequestHeader unset X-Forwarded-Proto
+    RequestHeader unset X-Forwarded-Scheme
+
+    Keepalive off
+
+    <Proxy "balancer://{{ name }}">
+      ProxyPreserveHost Off
+      ProxyAddHeaders Off
+
+      BalancerMember http://{{ jh }}:{{ port }} max=10 connectiontimeout=5 retry=30
+
+    </Proxy>
+
+    ProxyPass        / balancer://{{ name }}/
+    ProxyPassReverse / balancer://{{ name }}/
+
+</VirtualHost>
+
+{% endfor %}

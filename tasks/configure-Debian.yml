@@ -29,7 +29,6 @@
   stat: "path={{ item.certificate_file }}"
   register: apache_ssl_certificates
   with_items: "{{ apache_vhosts_ssl }}"
-  no_log: "{{ apache_ssl_no_log }}"
 
 - name: Add apache vhosts configuration.
   template:
@@ -47,7 +46,6 @@
     dest: "{{ apache_conf_path }}/sites-enabled/{{ apache_vhosts_filename }}"
     state: link
     mode: 0644
-    force: "{{ ansible_check_mode }}"
   notify: restart apache
   when: apache_create_vhosts | bool
 
